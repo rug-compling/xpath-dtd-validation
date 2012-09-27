@@ -76,7 +76,37 @@ private:
     Scope const *d_parent;
 };
 
-void inspect(ASTNode *node, Scope *scope)
+class DTD
+{
+public:
+    DTD(map<string, vector<string> > const &elements)
+    :  
+        d_map(elements)
+    {
+        //
+    }
+
+    bool allowElement(string const &element, string const &parent) const
+    {
+        return d_map.find(element) != d_map.end();
+    }
+
+    bool allowAttribute(string const &attribute, string const &element) const
+    {
+        ElementMap::const_iterator pos = d_map.find(element);
+
+        if (pos == d_map.end())
+            return false;
+
+        return find(pos->second.begin(), pos->second.end(), attribute) != pos->second.end();
+    }
+
+private:
+    typedef map<string,vector<string> > ElementMap;
+    ElementMap d_map;
+};
+
+void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
 {
     switch (node->getType())
     {
@@ -88,7 +118,7 @@ void inspect(ASTNode *node, Scope *scope)
             XQNav::Steps steps(nav->getSteps());
 
             for (XQNav::Steps::const_iterator it = steps.begin(); it != steps.end(); ++it)
-                inspect(it->step, scope);
+                inspect(it->step, scope, dtd);
 
             break;
         }
@@ -127,10 +157,23 @@ void inspect(ASTNode *node, Scope *scope)
             char *nodeName = XMLString::transcode(test->getNodeName());
 
             if (strcmp(nodeType, "element") == 0)
+            {
+                // Test to see if this element is allowed here
+                if (!dtd.allowElement(nodeName, scope->nodeName()))
+                    cerr << "The element " << nodeName
+                         << " is not allowed inside "
+                         << scope->nodeName() << endl;
+
                 scope->setNodeName(nodeName);
-            else
-                cout << "> Testing " << nodeType << " " << nodeName
-                     << " in scope " << scope->path() << endl;
+            }
+            
+            else if (strcmp(nodeType, "attribute") == 0)
+            {
+                if (!dtd.allowAttribute(nodeName, scope->nodeName()))
+                    cerr << "The attribute " << nodeName
+                         << " is not allowed inside "
+                         << scope->nodeName() << endl;
+            }
 
             delete[] nodeType;
             delete[] nodeName;
@@ -167,7 +210,7 @@ void inspect(ASTNode *node, Scope *scope)
 
             for (VectorOfASTNodes::const_iterator it = args.begin();
                 it != args.end(); ++it)
-                inspect(*it, scope);
+                inspect(*it, scope, dtd);
 
             break;
         }
@@ -225,7 +268,7 @@ void inspect(ASTNode *node, Scope *scope)
             cout << "Type DOCUMENT_ORDER" << endl;
 
             XQDocumentOrder *docOrder = reinterpret_cast<XQDocumentOrder*>(node);
-            inspect(docOrder->getExpression(), scope);
+            inspect(docOrder->getExpression(), scope, dtd);
 
             break;
         }
@@ -236,8 +279,8 @@ void inspect(ASTNode *node, Scope *scope)
          
             XQPredicate *predicate = reinterpret_cast<XQPredicate*>(node);
             Scope *stepScope = new Scope(scope);
-            inspect(predicate->getExpression(), stepScope);
-            inspect(predicate->getPredicate(), stepScope);
+            inspect(predicate->getExpression(), stepScope, dtd);
+            inspect(predicate->getPredicate(), stepScope, dtd);
             break;
         }
 
@@ -246,7 +289,7 @@ void inspect(ASTNode *node, Scope *scope)
             cout << "Type ATOMIZE" << endl;
 
             XQAtomize *atomize = reinterpret_cast<XQAtomize*>(node);
-            inspect(atomize->getExpression(), scope);
+            inspect(atomize->getExpression(), scope, dtd);
 
             break;
         }
@@ -424,15 +467,9 @@ int main(int argc, char** argv)
     map<string,vector<string> > elements;
     parseDtd("alpino_ds.dtd", elements);
 
-    for (map<string, vector<string> >::const_iterator it = elements.begin(); it != elements.end(); ++it)
-    {
-        cout << it->first << ":";
-        for (vector<string>::const_iterator attr = it->second.begin(); attr != it->second.end(); ++attr)
-            cout << " " << *attr;
-        cout << endl;
-    }
+    DTD alpinoDtd(elements);
 
-    inspect(root, rootScope);
+inspect(root, rootScope, alpinoDtd);
 
     cout << "Done." << endl;
 
