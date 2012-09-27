@@ -450,7 +450,7 @@ bool parseDtd(string const &file, map<string, vector<string> > &elements)
 
 int main(int argc, char** argv)
 {
-    string queryString(argc > 1 ? argv[1] : "//node[@rel='su']");
+    string queryString(argc > 1 ? argv[1] : "//node[@rel='su' and string(@begin) = 4]");
 
 	DynamicContext *ctx = s_xqilla.createContext(XQilla::XPATH2);
     ctx->setXPath1CompatibilityMode(true);
