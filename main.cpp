@@ -17,7 +17,9 @@
 #include <xqilla/ast/XQPredicate.hpp>
 #include <xqilla/axis/NodeTest.hpp>
 #include <xercesc/util/XMLString.hpp>
-#include <libxml/tree.h>
+
+#include "SimpleDTD.hh"
+#include "textfile.hh"
 
 using namespace std;
 
@@ -84,43 +86,7 @@ private:
 
 typedef map<string, set<string> > ElementMap;
 
-class DTD
-{
-public:
-    DTD(ElementMap const &elements)
-    :  
-        d_map(elements)
-    {
-        for (ElementMap::const_iterator elemIter = d_map.begin();
-                elemIter != d_map.end(); ++elemIter)
-            std::copy(elemIter->second.begin(), elemIter->second.end(),
-                inserter(d_attributes, d_attributes.begin()));
-    }
-
-    bool allowElement(string const &element, string const &parent) const
-    {
-        return d_map.find(element) != d_map.end();
-    }
-
-    bool allowAttribute(string const &attribute, string const &element) const
-    {
-        if (element == "*")
-            return d_attributes.find(attribute) != d_attributes.end();
-
-        ElementMap::const_iterator pos = d_map.find(element);
-
-        if (pos == d_map.end())
-            return false;
-
-        return pos->second.count(attribute) > 0;
-    }
-
-private:
-    ElementMap d_map;
-    set<string> d_attributes;
-};
-
-void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
+void inspect(ASTNode *node, Scope *scope, SimpleDTD const &dtd)
 {
     switch (node->getType())
     {
@@ -455,38 +421,6 @@ void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
     }
 }
 
-void scanElement(void *payload, void *data, xmlChar *name)
-{
-    xmlElement *elem = reinterpret_cast<xmlElement*>(payload);
-    ElementMap *elements = reinterpret_cast<ElementMap *>(data);
-
-    for (xmlAttributePtr attr = elem->attributes; attr != NULL; attr = reinterpret_cast<xmlAttributePtr>(attr->next))
-        (*elements)[reinterpret_cast<char const *>(elem->name)].insert(reinterpret_cast<char const *>(attr->name));
-}
-
-bool parseDtd(string const &file, ElementMap &elements)
-{
-    xmlParserInputBufferPtr input = xmlParserInputBufferCreateFilename(file.c_str(), XML_CHAR_ENCODING_8859_1);
-
-    xmlDtdPtr dtd = xmlIOParseDTD(NULL, input, XML_CHAR_ENCODING_8859_1);
-
-    if (dtd == NULL)
-    {
-        cerr << "Could not parse DTD" << endl;
-        return false;
-    }
-
-    if (dtd->elements == NULL)
-    {
-        cerr << "DTD hashtable has no elements" << endl;
-        return false;
-    }
-
-    xmlHashScan(reinterpret_cast<xmlHashTablePtr>(dtd->elements), scanElement, &elements);
-
-    return true;
-}
-
 int main(int argc, char** argv)
 {
     string queryString(argc > 1 ? argv[1] : "//node[@rel='su' and string(@begin) = 4]");
@@ -504,11 +438,11 @@ int main(int argc, char** argv)
     rootScope->setNodeName("[document root]");
 
     ElementMap elements;
-    parseDtd("alpino_ds.dtd", elements);
 
-    DTD alpinoDtd(elements);
+    std::string dtdData = readFile("alpino_ds.dtd");
+    SimpleDTD alpinoDtd(dtdData);
 
-inspect(root, rootScope, alpinoDtd);
+    inspect(root, rootScope, alpinoDtd);
 
     cout << "Done." << endl;
 
