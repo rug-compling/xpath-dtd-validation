@@ -1,7 +1,6 @@
 #ifndef QUERY_SCOPE_HH
 #define QUERY_SCOPE_HH
 
-#include <sstream>
 #include <string>
 #include <tr1/memory>
 
