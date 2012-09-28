@@ -8,6 +8,7 @@
 #include <xqilla/ast/XQNav.hpp>
 #include <xqilla/ast/XQAtomize.hpp>
 #include <xqilla/ast/XQDocumentOrder.hpp>
+#include <xqilla/ast/XQFunction.hpp>
 #include <xqilla/ast/XQOperator.hpp>
 #include <xqilla/ast/XQPredicate.hpp>
 #include <xqilla/axis/NodeTest.hpp>
@@ -141,8 +142,19 @@ void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
             break;
 
         case ASTNode::FUNCTION:
+        {
             cout << "Type FUNCTION" << endl;
+
+            XQFunction *fun = reinterpret_cast<XQFunction *>(node);
+
+            VectorOfASTNodes const &args(fun->getArguments());
+
+            for (VectorOfASTNodes::const_iterator it = args.begin();
+                it != args.end(); ++it)
+                inspect(*it, scope, dtd);
+
             break;
+        }
 
         case ASTNode::VARIABLE:
             cout << "Type VARIABLE" << endl;
