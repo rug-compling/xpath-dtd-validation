@@ -149,10 +149,16 @@ void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
 
         case ASTNode::STEP:
         {
-            cout << "Type STEP" << endl;
-            
             XQStep *step = reinterpret_cast<XQStep*>(node);
             NodeTest *test = step->getNodeTest();
+
+            // Wild cards have no element name.
+            if (test->getNameWildcard())
+            {
+                scope->setNodeName("*");
+                return;
+            }
+
             char *nodeType = XMLString::transcode(test->getNodeType());
             char *nodeName = XMLString::transcode(test->getNodeName());
 
