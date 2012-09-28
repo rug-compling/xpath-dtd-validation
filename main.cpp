@@ -1,6 +1,10 @@
+#include <algorithm>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <map>
+#include <set>
+
 #include <xqilla/utils/XQillaPlatformUtils.hpp>
 #include <xqilla/xqilla-simple.hpp>
 #include <xqilla/ast/ASTNode.hpp>
@@ -78,14 +82,19 @@ private:
     Scope const *d_parent;
 };
 
+typedef map<string, set<string> > ElementMap;
+
 class DTD
 {
 public:
-    DTD(map<string, vector<string> > const &elements)
+    DTD(ElementMap const &elements)
     :  
         d_map(elements)
     {
-        //
+        for (ElementMap::const_iterator elemIter = d_map.begin();
+                elemIter != d_map.end(); ++elemIter)
+            std::copy(elemIter->second.begin(), elemIter->second.end(),
+                inserter(d_attributes, d_attributes.begin()));
     }
 
     bool allowElement(string const &element, string const &parent) const
@@ -95,17 +104,20 @@ public:
 
     bool allowAttribute(string const &attribute, string const &element) const
     {
+        if (element == "*")
+            return d_attributes.find(attribute) != d_attributes.end();
+
         ElementMap::const_iterator pos = d_map.find(element);
 
         if (pos == d_map.end())
             return false;
 
-        return find(pos->second.begin(), pos->second.end(), attribute) != pos->second.end();
+        return pos->second.count(attribute) > 0;
     }
 
 private:
-    typedef map<string,vector<string> > ElementMap;
     ElementMap d_map;
+    set<string> d_attributes;
 };
 
 void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
@@ -446,13 +458,13 @@ void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
 void scanElement(void *payload, void *data, xmlChar *name)
 {
     xmlElement *elem = reinterpret_cast<xmlElement*>(payload);
-    map<string,vector<string> > *elements = reinterpret_cast<map<string,vector<string> > *>(data);
+    ElementMap *elements = reinterpret_cast<ElementMap *>(data);
 
     for (xmlAttributePtr attr = elem->attributes; attr != NULL; attr = reinterpret_cast<xmlAttributePtr>(attr->next))
-        (*elements)[reinterpret_cast<char const *>(elem->name)].push_back(reinterpret_cast<char const *>(attr->name));
+        (*elements)[reinterpret_cast<char const *>(elem->name)].insert(reinterpret_cast<char const *>(attr->name));
 }
 
-bool parseDtd(string const &file, map<string, vector<string> > &elements)
+bool parseDtd(string const &file, ElementMap &elements)
 {
     xmlParserInputBufferPtr input = xmlParserInputBufferCreateFilename(file.c_str(), XML_CHAR_ENCODING_8859_1);
 
@@ -491,7 +503,7 @@ int main(int argc, char** argv)
     Scope *rootScope = new Scope();
     rootScope->setNodeName("[document root]");
 
-    map<string,vector<string> > elements;
+    ElementMap elements;
     parseDtd("alpino_ds.dtd", elements);
 
     DTD alpinoDtd(elements);
