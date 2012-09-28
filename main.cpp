@@ -5,6 +5,8 @@
 #include <map>
 #include <set>
 
+#include <tr1/memory>
+
 #include <xqilla/utils/XQillaPlatformUtils.hpp>
 #include <xqilla/xqilla-simple.hpp>
 #include <xqilla/ast/ASTNode.hpp>
@@ -47,12 +49,12 @@ namespace {
 class Scope
 {
 public:
-    Scope(Scope const *parent = 0)
+    Scope(std::tr1::shared_ptr<Scope const> parent)
     :
         d_parent(parent)
-    {
-        //
-    }
+    {}
+
+    Scope() {}
 
     void setNodeName(std::string const &name)
     {
@@ -73,7 +75,7 @@ public:
         while (scope)
         {
             ss << ">" << scope->nodeName();
-            scope = scope->d_parent;
+            scope = scope->d_parent.get();
         }
 
         return ss.str();
@@ -81,12 +83,12 @@ public:
 
 private:
     std::string d_nodeName;
-    Scope const *d_parent;
+    std::tr1::shared_ptr<Scope const> d_parent;
 };
 
 typedef map<string, set<string> > ElementMap;
 
-void inspect(ASTNode *node, Scope *scope, SimpleDTD const &dtd)
+void inspect(ASTNode *node, std::tr1::shared_ptr<Scope> scope, SimpleDTD const &dtd)
 {
     switch (node->getType())
     {
@@ -283,7 +285,7 @@ void inspect(ASTNode *node, Scope *scope, SimpleDTD const &dtd)
             cout << "Type PREDICATE" << endl;
          
             XQPredicate *predicate = reinterpret_cast<XQPredicate*>(node);
-            Scope *stepScope = new Scope(scope);
+            std::tr1::shared_ptr<Scope> stepScope(new Scope(scope));
             inspect(predicate->getExpression(), stepScope, dtd);
             inspect(predicate->getPredicate(), stepScope, dtd);
             break;
@@ -434,7 +436,7 @@ int main(int argc, char** argv)
 
     ASTNode *root = query->getQueryBody();
 
-    Scope *rootScope = new Scope();
+    std::tr1::shared_ptr<Scope> rootScope(new Scope());
     rootScope->setNodeName("[document root]");
 
     ElementMap elements;
@@ -445,8 +447,6 @@ int main(int argc, char** argv)
     inspect(root, rootScope, alpinoDtd);
 
     cout << "Done." << endl;
-
-    delete rootScope;
 
 	return 0;
 }
