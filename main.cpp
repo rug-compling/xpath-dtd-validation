@@ -46,15 +46,15 @@ namespace {
     static XQilla s_xqilla;
 }
 
-class Scope
+class QueryScope
 {
 public:
-    Scope(std::tr1::shared_ptr<Scope const> parent)
+    QueryScope(std::tr1::shared_ptr<QueryScope const> parent)
     :
         d_parent(parent)
     {}
 
-    Scope() {}
+    QueryScope() {}
 
     void setNodeName(std::string const &name)
     {
@@ -70,7 +70,7 @@ public:
     {
         stringstream ss;
 
-        Scope const *scope = this;
+        QueryScope const *scope = this;
 
         while (scope)
         {
@@ -83,12 +83,12 @@ public:
 
 private:
     std::string d_nodeName;
-    std::tr1::shared_ptr<Scope const> d_parent;
+    std::tr1::shared_ptr<QueryScope const> d_parent;
 };
 
 typedef map<string, set<string> > ElementMap;
 
-void inspect(ASTNode *node, std::tr1::shared_ptr<Scope> scope, SimpleDTD const &dtd)
+void inspect(ASTNode *node, std::tr1::shared_ptr<QueryScope> scope, SimpleDTD const &dtd)
 {
     switch (node->getType())
     {
@@ -285,7 +285,7 @@ void inspect(ASTNode *node, std::tr1::shared_ptr<Scope> scope, SimpleDTD const &
             cout << "Type PREDICATE" << endl;
          
             XQPredicate *predicate = reinterpret_cast<XQPredicate*>(node);
-            std::tr1::shared_ptr<Scope> stepScope(new Scope(scope));
+            std::tr1::shared_ptr<QueryScope> stepScope(new QueryScope(scope));
             inspect(predicate->getExpression(), stepScope, dtd);
             inspect(predicate->getPredicate(), stepScope, dtd);
             break;
@@ -436,7 +436,7 @@ int main(int argc, char** argv)
 
     ASTNode *root = query->getQueryBody();
 
-    std::tr1::shared_ptr<Scope> rootScope(new Scope());
+    std::tr1::shared_ptr<QueryScope> rootScope(new QueryScope());
     rootScope->setNodeName("[document root]");
 
     ElementMap elements;
