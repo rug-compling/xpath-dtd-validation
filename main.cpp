@@ -21,6 +21,7 @@
 #include <xercesc/util/XMLString.hpp>
 
 #include "SimpleDTD.hh"
+#include "QueryScope.hh"
 #include "textfile.hh"
 
 using namespace std;
@@ -45,48 +46,6 @@ namespace {
 
     static XQilla s_xqilla;
 }
-
-class QueryScope
-{
-public:
-    QueryScope(std::tr1::shared_ptr<QueryScope const> parent)
-    :
-        d_parent(parent)
-    {}
-
-    QueryScope() {}
-
-    void setNodeName(std::string const &name)
-    {
-        d_nodeName = name;
-    }
-
-    std::string const &nodeName() const
-    {
-        return d_nodeName;
-    }
-
-    std::string path() const
-    {
-        stringstream ss;
-
-        QueryScope const *scope = this;
-
-        while (scope)
-        {
-            ss << ">" << scope->nodeName();
-            scope = scope->d_parent.get();
-        }
-
-        return ss.str();
-    }
-
-private:
-    std::string d_nodeName;
-    std::tr1::shared_ptr<QueryScope const> d_parent;
-};
-
-typedef map<string, set<string> > ElementMap;
 
 void inspect(ASTNode *node, std::tr1::shared_ptr<QueryScope> scope, SimpleDTD const &dtd)
 {
