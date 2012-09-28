@@ -4,6 +4,7 @@
 #include <xqilla/utils/XQillaPlatformUtils.hpp>
 #include <xqilla/xqilla-simple.hpp>
 #include <xqilla/ast/ASTNode.hpp>
+#include <xqilla/ast/XPath1Compat.hpp>
 #include <xqilla/ast/XQNav.hpp>
 #include <xqilla/ast/XQAtomize.hpp>
 #include <xqilla/ast/XQDocumentOrder.hpp>
@@ -254,8 +255,16 @@ void inspect(ASTNode *node, Scope *scope, DTD const &dtd)
             break;
 
         case ASTNode::XPATH1_CONVERT:
+        {
             cout << "Type XPATH1_CONVERT" << endl;
+
+            XPath1CompatConvertFunctionArg *conv =
+                reinterpret_cast<XPath1CompatConvertFunctionArg *>(node);
+
+            inspect(conv->getExpression(), scope, dtd);
+
             break;
+        }
 
         case ASTNode::PROMOTE_UNTYPED:
             cout << "Type PROMOTE_UNTYPED" << endl;
